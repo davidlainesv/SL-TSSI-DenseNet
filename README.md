@@ -1,1 +1,3 @@
-# SL-TSSI
+# SL-TSSI-DenseNet
+
+Available soon on July 2023...
