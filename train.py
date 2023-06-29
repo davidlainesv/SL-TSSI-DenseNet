@@ -3,7 +3,7 @@ from config import RANDOM_SEED
 from dataset import Dataset
 import numpy as np
 import wandb
-from wandb.keras import WandbCallback
+from wandb.keras import WandbCallback, WandbModelCheckpoint
 import tensorflow as tf
 from model import build_densenet121_model
 from optimizer import build_sgd_optimizer
@@ -38,9 +38,12 @@ def run_experiment(config=None, log_to_wandb=True, verbose=0):
         pipeline=config['pipeline'])
 
     # generate val dataset
-    validation_dataset = dataset.get_validation_set(
-        batch_size=config['batch_size'],
-        pipeline=config['pipeline'])
+    if config['validate']:
+        validation_dataset = dataset.get_validation_set(
+            batch_size=config['batch_size'],
+            pipeline=config['pipeline'])
+    else:
+        validation_dataset = None
 
     # describe dataset distribution
     print("[INFO] Dataset Total examples:", dataset.num_total_examples)
@@ -78,7 +81,16 @@ def run_experiment(config=None, log_to_wandb=True, verbose=0):
             save_model=False
         )
         callbacks.append(wandb_callback)
-
+        
+        if config['save_weights']:
+            wandb_model_checkpoint = WandbModelCheckpoint(
+                f"artifacts/{wandb.run.id}/weights",
+                save_weights_only=True,
+                save_freq=config['save_freq'],
+                verbose=1
+            )
+            callbacks.append(wandb_model_checkpoint)
+        
     # train model
     model.fit(train_dataset,
               epochs=config['num_epochs'],
@@ -99,8 +111,13 @@ def agent_fn(config, project, entity, verbose=0):
 
 def main(args):
     global dataset
+    
+    if args.concat_validation_to_train:
+        validate = False
+    else:
+        validate = True
 
-    dataset = Dataset(args.dataset)
+    dataset = Dataset(args.dataset, args.concat_validation_to_train)
     steps_per_epoch = np.ceil(dataset.num_train_examples / args.batch_size)
     config = {
         'pretraining': args.pretraining,
@@ -117,6 +134,10 @@ def main(args):
         'batch_size': args.batch_size,
         'pipeline': args.pipeline,
         'num_epochs': args.num_epochs,
+        
+        'save_weights': args.save_weights,
+        'save_freq': int(args.num_epochs * steps_per_epoch),
+        'validate': validate
     }
 
     project_name = args.dataset + "_" + args.project
@@ -131,6 +152,10 @@ if __name__ == "__main__":
                         help='Project name', default='training')
     parser.add_argument('--dataset', type=str,
                         help='Name of dataset', default='wlasl100_tssi')
+    parser.add_argument('--concat_validation_to_train', type=str2bool,
+                        help='Add validation set to training set', default=False)
+    parser.add_argument('--save_weights', type=str2bool,
+                        help='Save weights at last epoch', default=False)
 
     parser.add_argument('--pretraining', type=str2bool,
                         help='Add pretraining', default=False)

@@ -33,26 +33,21 @@ def run_experiment(config=None, log_to_wandb=True, verbose=0):
         pipeline=config['pipeline'])
 
     # describe dataset distribution
-    print("[INFO] Dataset Total examples:", dataset.num_total_examples)
     print("[INFO] Dataset Testing examples:", dataset.num_test_examples)
 
     # describe input shape
     input_shape = [dataset.input_height, dataset.input_width, 3]
     print("[INFO] Input Shape:", input_shape)
 
-    # setup optimizer
-    optimizer = build_sgd_optimizer(initial_learning_rate=config['initial_learning_rate'],
-                                    maximal_learning_rate=config['maximal_learning_rate'],
-                                    momentum=config['momentum'],
-                                    nesterov=config['nesterov'],
-                                    step_size=config['step_size'],
-                                    weight_decay=config['weight_decay'])
+    # placeholder optimizer
+    optimizer = build_sgd_optimizer()
     
-    # setup model
+    # placeholder model
     model = build_densenet121_model(input_shape=input_shape,
-                                    dropout=config['dropout'],
+                                    dropout=0,
                                     optimizer=optimizer,
-                                    pretraining=config['pretraining'])
+                                    pretraining=False,
+                                    num_classes=dataset.num_classes)
     
     # load weights
     model.load_weights(config['weights_dir'])
@@ -90,21 +85,8 @@ def main(args):
     dataset = Dataset(args.dataset)
     steps_per_epoch = np.ceil(dataset.num_train_examples / args.batch_size)
     config = {
-        'pretraining': args.pretraining,
-        'dropout': args.dropout,
-
-        'initial_learning_rate': args.lr_min,
-        'maximal_learning_rate': args.lr_max,
-        'momentum': 0.9,
-        'nesterov': True,
-        'weight_decay': args.weight_decay,
-        'step_size': int(args.num_epochs / 2) * steps_per_epoch,
-
-        'augmentation': args.augmentation,
         'batch_size': args.batch_size,
         'pipeline': args.pipeline,
-        'num_epochs': args.num_epochs,
-        
         'weights_dir': args.weights_dir
     }
 
@@ -119,26 +101,14 @@ if __name__ == "__main__":
     parser.add_argument('--project', type=str,
                         help='Project name', default='testing')
     parser.add_argument('--dataset', type=str,
-                        help='Name of dataset', default='wlasl100')
+                        help='Name of dataset', default='wlasl100_tssi')
     parser.add_argument('--weights_dir', type=str,
                         help='Dir to weights', required=True)
 
-    parser.add_argument('--dropout', type=float,
-                        help='Dropout at the final layer', default=0)
-    
-    parser.add_argument('--lr_min', type=float,
-                        help='Minimum learning rate', default=0.001)
-    parser.add_argument('--lr_max', type=float,
-                        help='Minimum learning rate', default=0.01)
-    parser.add_argument('--weight_decay', type=float,
-                        help='Weight decay', default=0)
-    
     parser.add_argument('--batch_size', type=int,
                         help='Batch size of training and testing', default=64)
     parser.add_argument('--pipeline', type=str,
                         help='Pipeline', default="default")
-    parser.add_argument('--num_epochs', type=int,
-                        help='Number of epochs', default=24)
 
     args = parser.parse_args()
 

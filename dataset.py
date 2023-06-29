@@ -252,7 +252,7 @@ class Dataset():
         @tf.function
         def train_map_fn(x, y):
             batch = tf.expand_dims(x, axis=0)
-            batch = RemoveZ()(batch)
+            # batch = RemoveZ()(batch)
             batch = preprocessing_pipeline(batch, training=True)
             x = tf.ensure_shape(
                 batch[0], [self.input_height, self.input_width, 3])
@@ -278,7 +278,7 @@ class Dataset():
         # define the val map function
         @tf.function
         def test_map_fn(batch_x, batch_y):
-            batch_x = RemoveZ()(batch_x)
+            # batch_x = RemoveZ()(batch_x)
             batch_x = preprocessing_pipeline(batch_x)
             return batch_x, batch_y
 
@@ -302,7 +302,7 @@ class Dataset():
         # define the val map function
         @tf.function
         def test_map_fn(batch_x, batch_y):
-            batch_x = RemoveZ()(batch_x)
+            # batch_x = RemoveZ()(batch_x)
             batch_x = preprocessing_pipeline(batch_x)
             return batch_x, batch_y
 
