@@ -128,3 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 commands.sh
+
+# large files
+datasets/wlasl100_tssi
+datasets/autsl_tssi
+wandb/
