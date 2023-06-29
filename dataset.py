@@ -1,6 +1,6 @@
 from enum import IntEnum
 import tensorflow as tf
-from config import MAX_INPUT_HEIGHT, MIN_INPUT_HEIGHT
+from config import AUTSL_INPUT_HEIGHT, MEJIAPEREZ_INPUT_HEIGHT, WLASL100_INPUT_HEIGHT
 from data_augmentation import RandomFlip, RandomScale, RandomShift, RandomRotation, RandomSpeed
 from preprocessing import Center, CenterAtFirstFrame2D, FillBlueWithAngle, PadIfLessThan, RemoveZ, ResizeIfMoreThan, TranslationScaleInvariant
 import tensorflow_datasets as tfds
@@ -51,15 +51,15 @@ LayerDict = {
     },
     'train_resize': {
         'type': LayerType.Normalization,
-        'layer': ResizeIfMoreThan(frames=MIN_INPUT_HEIGHT)
+        'layer': ResizeIfMoreThan(frames=100)
     },
     'test_resize': {
         'type': LayerType.Normalization,
-        'layer': ResizeIfMoreThan(frames=MAX_INPUT_HEIGHT)
+        'layer': ResizeIfMoreThan(frames=100)
     },
     'pad': {
         'type': LayerType.Normalization,
-        'layer': PadIfLessThan(frames=MIN_INPUT_HEIGHT)
+        'layer': PadIfLessThan(frames=100)
     },
     'angle': {
         'type': LayerType.Data,
@@ -205,18 +205,34 @@ class Dataset():
         # obtain characteristics of the dataset
         num_train_examples = ds["train"].cardinality()
         num_val_examples = ds["validation"].cardinality()
-        if "test" in ds.keys:
+        if "test" in ds.keys():
             ds["test"] = ds["test"].map(label_to_one_hot)
             num_test_examples = ds["test"].cardinality()
         else:
             num_test_examples = 0
         num_total_examples = num_train_examples + num_val_examples + num_test_examples
+        
+        if name == "autsl_tssi":
+            input_height = AUTSL_INPUT_HEIGHT
+        elif name == "mejiaperez_tssi":
+            input_height = MEJIAPEREZ_INPUT_HEIGHT
+        elif name == "wlasl100_tssi":
+            input_height = WLASL100_INPUT_HEIGHT
+        else:
+            raise Exception("Dataset " + name + " not found.")
+            
+            
+        LayerDict["train_resize"]["layer"] = ResizeIfMoreThan(frames=input_height)
+        LayerDict["test_resize"]["layer"] = ResizeIfMoreThan(frames=input_height)
+        LayerDict["pad"]["layer"] = PadIfLessThan(frames=input_height)
 
         self.ds = ds
+        self.name = name
         self.num_train_examples = num_train_examples
         self.num_val_examples = num_val_examples
         self.num_test_examples = num_test_examples
         self.num_total_examples = num_total_examples
+        self.input_height = input_height
         self.input_width = info.features['pose'].shape[1]
         self.num_classes = info.features['label'].num_classes
 
@@ -239,7 +255,7 @@ class Dataset():
             batch = RemoveZ()(batch)
             batch = preprocessing_pipeline(batch, training=True)
             x = tf.ensure_shape(
-                batch[0], [MIN_INPUT_HEIGHT, self.input_width, 2])
+                batch[0], [self.input_height, self.input_width, 3])
             return x, y
 
         train_ds = self.ds["train"]
